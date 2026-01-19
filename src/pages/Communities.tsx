@@ -5,11 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Users, Search, Plus, MapPin, Lock, Globe, Filter } from "lucide-react";
 
+interface Community {
+  id: number;
+  name: string;
+  description: string;
+  members: number;
+  type: string;
+  location: string;
+  image: string | null;
+}
+
 const Communities = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
 
-  const communities = [
+  const communities: Community[] = [
     { id: 1, name: "Green Valley", description: "A peaceful residential community focused on sustainable living", members: 450, type: "public", location: "Dhaka", image: null },
     { id: 2, name: "Downtown District", description: "Urban community for city center residents and businesses", members: 1200, type: "public", location: "Dhaka", image: null },
     { id: 3, name: "Tech Hub Community", description: "For tech enthusiasts and professionals to connect and collaborate", members: 320, type: "restricted", location: "Chattogram", image: null },
