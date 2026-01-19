@@ -1,19 +1,56 @@
 import { useState } from "react";
 import AppLayout from "@/components/AppLayout";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useRegisterVoiceCommand } from "@/hooks/useRegisterVoiceCommand";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Image, Calendar, AlertTriangle, Bell, CheckCircle, Users } from "lucide-react";
 
 const CreateNotice = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     title: "",
     content: "",
     type: "info",
     community: "",
     scheduledDate: ""
+  });
+
+  const handleSubmit = () => {
+    if (!formData.title || !formData.content) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in title and content",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Notice Created",
+      description: "Your notice has been posted to the community board.",
+    });
+
+    // Reset form
+    setFormData({ ...formData, title: "", content: "" });
+    navigate("/notices");
+  };
+
+  useRegisterVoiceCommand({
+    id: "submit-notice",
+    keywords: {
+      en: ["submit notice", "post notice", "publish notice"],
+      bn: ["নোটিশ জমা দিন", "নোটিশ পোস্ট করুন"],
+    },
+    response: {
+      en: "Submitting notice",
+      bn: "নোটিশ জমা দেয়া হচ্ছে",
+    },
+    action: () => handleSubmit()
   });
 
   const noticeTypes = [
@@ -147,12 +184,10 @@ const CreateNotice = () => {
             <Link to="/notices">
               <Button variant="outline">Cancel</Button>
             </Link>
-            <Link to="/notices">
-              <Button variant="hero">
-                <Bell className="w-4 h-4" />
-                Post Notice
-              </Button>
-            </Link>
+            <Button variant="hero" onClick={handleSubmit}>
+              <Bell className="w-4 h-4" />
+              Post Notice
+            </Button>
           </div>
         </div>
       </div>

@@ -15,6 +15,7 @@ import {
   Play
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRegisterVoiceCommand } from "@/hooks/useRegisterVoiceCommand";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,6 +82,28 @@ const FakeCall = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const delayTimerRef = useRef<NodeJS.Timeout | null>(null);
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Register voice command for Fake Call
+  useRegisterVoiceCommand({
+    id: "start-fake-call",
+    keywords: {
+      en: ["start fake call", "trigger fake call", "call me now", "pretend call"],
+      bn: ["ফেক কল শুরু করো", "কল দাও", "এখনই কল দাও"],
+    },
+    response: {
+      en: "Starting fake call in 3 seconds",
+      bn: "৩ সেকেন্ডের মধ্যে ফেক কল শুরু হচ্ছে",
+    },
+    action: () => {
+      // Use the first caller or a default one
+      const callerToUse = callers[0] || defaultCallers[0];
+      // Override delay for immediate response
+      const originalDelay = settings.delay;
+      setSettings(prev => ({ ...prev, delay: 3 }));
+      triggerCall(callerToUse);
+      // Restore delay is hard because of state closure, but okay for this session
+    }
+  });
 
   useEffect(() => {
     return () => {

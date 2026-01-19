@@ -22,6 +22,7 @@ import {
   Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useRegisterVoiceCommand } from "@/hooks/useRegisterVoiceCommand";
 
 const CheckInTimer = () => {
   const [duration, setDuration] = useState(30); // minutes
@@ -107,6 +108,34 @@ const CheckInTimer = () => {
       description: `Added ${minutes} more minutes.`,
     });
   };
+
+  // Voice commands for Timer
+  useRegisterVoiceCommand([
+    {
+      id: "start-timer",
+      keywords: {
+        en: ["start timer", "start check in", "set timer"],
+        bn: ["টাইমার চালু করো", "চেক ইন শুরু করো"],
+      },
+      response: {
+        en: "Starting check-in timer",
+        bn: "চেক-ইন টাইমার চালু করা হচ্ছে",
+      },
+      action: () => startTimer()
+    },
+    {
+      id: "stop-timer",
+      keywords: {
+        en: ["stop timer", "cancel check in", "i am safe"],
+        bn: ["টাইমার বন্ধ করো", "আমি নিরাপদ"],
+      },
+      response: {
+        en: "Stopping timer",
+        bn: "টাইমার বন্ধ করা হচ্ছে",
+      },
+      action: () => checkIn()
+    }
+  ]);
 
   // Timer countdown effect
   useEffect(() => {

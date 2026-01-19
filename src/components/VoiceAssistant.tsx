@@ -21,14 +21,12 @@ export function VoiceAssistant() {
   useEffect(() => {
     if (isListening) {
       playSound("listeningStart");
-    } else {
-      // We don't necessarily want a sound on stop unless it was a success/error,
-      // but for now let's keep it simple.
-      // playSound("listeningEnd");
     }
   }, [isListening, playSound]);
 
-  const handleToggleListening = () => {
+  const handleToggleListening = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
     if (isListening) {
       stopListening();
       playSound("buttonRelease");
@@ -76,7 +74,7 @@ export function VoiceAssistant() {
               ? "bg-red-500 hover:bg-red-600 animate-pulse ring-4 ring-red-500/30"
               : "bg-primary hover:bg-primary/90 hover:scale-105"
           )}
-          title={isListening ? "Stop Listening" : "Start Voice Assistant"}
+          title={isListening ? "Stop Listening (Double Click to Toggle)" : "Start Voice Assistant (Double Click to Toggle)"}
         >
           {isListening ? (
             <Mic className="h-6 w-6 text-white" />
