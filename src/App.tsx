@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { VoiceAssistant } from "@/components/VoiceAssistant";
+import { VoiceCommandsList } from "@/components/VoiceCommandsList";
 import { VoiceAssistantProvider } from "@/context/VoiceAssistantContext";
 import { ColorBlindnessAssistant } from "@/components/ColorBlindnessAssistant";
 import Index from "./pages/Index";
@@ -46,6 +47,7 @@ const App = () => (
         <BrowserRouter>
           <VoiceAssistantProvider>
             <VoiceAssistant />
+            <VoiceCommandsList />
             <ColorBlindnessAssistant />
             <Routes>
               <Route path="/" element={<Index />} />

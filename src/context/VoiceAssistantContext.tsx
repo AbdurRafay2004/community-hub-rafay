@@ -21,6 +21,9 @@ interface VoiceAssistantContextType {
   isListening: boolean;
   language: Language;
   feedback: string;
+  allCommands: VoiceCommand[];
+  showCommandsList: boolean;
+  setShowCommandsList: (show: boolean) => void;
   startListening: () => void;
   stopListening: () => void;
   toggleLanguage: () => void;
@@ -305,13 +308,29 @@ export function VoiceAssistantProvider({ children }: { children: React.ReactNode
   const [language, setLanguage] = useState<Language>("en");
   const [feedback, setFeedback] = useState<string>("");
   const [dynamicCommands, setDynamicCommands] = useState<VoiceCommand[]>([]);
+  const [showCommandsList, setShowCommandsList] = useState(false);
 
   const navigate = useNavigate();
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const synthRef = useRef<SpeechSynthesis>(window.speechSynthesis);
 
-  // Combine static and dynamic commands
-  const allCommands = React.useMemo(() => [...initialCommands, ...dynamicCommands], [dynamicCommands]);
+  // Combine static and dynamic commands, including the "help" command which needs to access state setter
+  const allCommands = React.useMemo(() => {
+    const helpCommand: VoiceCommand = {
+        id: "help-command",
+        keywords: {
+            en: ["list commands", "help", "what can you do", "show commands", "commands"],
+            bn: ["কমান্ড দেখাও", "সাহায্য", "কি করতে পারো", "কমান্ড তালিকা"],
+        },
+        response: {
+            en: "Here are the available commands",
+            bn: "এখানে সব কমান্ডের তালিকা আছে",
+        },
+        action: () => setShowCommandsList(true)
+    };
+
+    return [...initialCommands, helpCommand, ...dynamicCommands];
+  }, [dynamicCommands]);
 
   const speak = useCallback((text: string) => {
     if (synthRef.current.speaking) {
@@ -470,6 +489,9 @@ export function VoiceAssistantProvider({ children }: { children: React.ReactNode
         isListening,
         language,
         feedback,
+        allCommands,
+        showCommandsList,
+        setShowCommandsList,
         startListening,
         stopListening,
         toggleLanguage,
