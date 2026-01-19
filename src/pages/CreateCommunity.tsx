@@ -1,13 +1,17 @@
 import { useState } from "react";
 import AppLayout from "@/components/AppLayout";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useRegisterVoiceCommand } from "@/hooks/useRegisterVoiceCommand";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, ArrowRight, Image, Globe, Lock, Users, CheckCircle } from "lucide-react";
 
 const CreateCommunity = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: "",
@@ -16,6 +20,27 @@ const CreateCommunity = () => {
     visibility: "public",
     welcomeMessage: "",
     rules: ""
+  });
+
+  const handleSubmit = () => {
+    toast({
+      title: "Community Created",
+      description: "Your new community has been successfully created!",
+    });
+    navigate("/communities");
+  };
+
+  useRegisterVoiceCommand({
+    id: "submit-community",
+    keywords: {
+      en: ["submit community", "create community", "publish community", "finish"],
+      bn: ["কমিউনিটি তৈরি করো", "কমিউনিটি জমা দিন", "শেষ করো"],
+    },
+    response: {
+      en: "Creating community",
+      bn: "কমিউনিটি তৈরি করা হচ্ছে",
+    },
+    action: () => handleSubmit()
   });
 
   const visibilityOptions = [
@@ -186,12 +211,10 @@ const CreateCommunity = () => {
                 <ArrowRight className="w-4 h-4" />
               </Button>
             ) : (
-              <Link to="/communities">
-                <Button variant="hero">
-                  <CheckCircle className="w-4 h-4" />
-                  Create Community
-                </Button>
-              </Link>
+              <Button variant="hero" onClick={handleSubmit}>
+                <CheckCircle className="w-4 h-4" />
+                Create Community
+              </Button>
             )}
           </div>
         </div>

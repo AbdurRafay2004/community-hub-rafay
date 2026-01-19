@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useShakeDetection } from "@/hooks/useShakeDetection";
 import { useVoiceActivation } from "@/hooks/useVoiceActivation";
+import { useRegisterVoiceCommand } from "@/hooks/useRegisterVoiceCommand";
 import { toast } from "sonner";
 import { 
   Settings, 
@@ -37,6 +38,25 @@ const SOSPage = () => {
   const [liveTracking, setLiveTracking] = useState(true);
 
   // Shake detection hook
+  // Register voice command for SOS
+  useRegisterVoiceCommand({
+    id: "trigger-sos",
+    keywords: {
+      en: ["activate sos", "send help", "trigger sos", "help me now"],
+      bn: ["এসওএস চালু করো", "সাহায্য পাঠাও", "এখনই সাহায্য"],
+    },
+    response: {
+      en: "Activating SOS alert!",
+      bn: "এসওএস সতর্কতা চালু করা হচ্ছে!",
+    },
+    action: () => {
+      toast.error("SOS Alert Triggered via Voice Command!");
+      if ((window as any).__triggerSOS) {
+        (window as any).__triggerSOS();
+      }
+    }
+  });
+
   const { 
     isSupported: shakeSupported, 
     permissionGranted: shakePermission,

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { VoiceAssistant } from "@/components/VoiceAssistant";
+import { VoiceAssistantProvider } from "@/context/VoiceAssistantContext";
 import { ColorBlindnessAssistant } from "@/components/ColorBlindnessAssistant";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -43,10 +44,11 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <VoiceAssistant />
-          <ColorBlindnessAssistant />
-          <Routes>
-            <Route path="/" element={<Index />} />
+          <VoiceAssistantProvider>
+            <VoiceAssistant />
+            <ColorBlindnessAssistant />
+            <Routes>
+              <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
@@ -73,7 +75,8 @@ const App = () => (
             <Route path="/fake-call" element={<FakeCall />} />
             <Route path="/safe-arrival" element={<SafeArrival />} />
             <Route path="*" element={<NotFound />} />
-          </Routes>
+            </Routes>
+          </VoiceAssistantProvider>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>

@@ -4,6 +4,7 @@ import AppLayout from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useRegisterVoiceCommand } from "@/hooks/useRegisterVoiceCommand";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -156,6 +157,33 @@ const SafeArrival = () => {
       icon: <Check className="h-4 w-4" />,
     });
   };
+
+  useRegisterVoiceCommand([
+    {
+      id: "start-tracking",
+      keywords: {
+        en: ["start tracking", "start journey", "track my journey", "start safe trip"],
+        bn: ["ট্র্যাকিং শুরু করো", "যাত্রা শুরু করো"],
+      },
+      response: {
+        en: "Starting journey tracking",
+        bn: "যাত্রা ট্র্যাকিং শুরু করা হচ্ছে",
+      },
+      action: () => handleStartTrip()
+    },
+    {
+      id: "stop-tracking",
+      keywords: {
+        en: ["stop tracking", "end journey", "i arrived", "i am safe"],
+        bn: ["ট্র্যাকিং বন্ধ করো", "যাত্রা শেষ", "আমি পৌঁছে গেছি"],
+      },
+      response: {
+        en: "Marking as arrived",
+        bn: "পৌঁছে গেছেন হিসেবে মার্ক করা হচ্ছে",
+      },
+      action: () => handleArrived()
+    }
+  ]);
 
   const handleCancel = () => {
     if (timerRef.current) clearInterval(timerRef.current);

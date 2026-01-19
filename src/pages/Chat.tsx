@@ -6,6 +6,7 @@ import {
   Send, Search, Phone, Video, MoreVertical, 
   Paperclip, Smile, Image, ArrowLeft
 } from "lucide-react";
+import { useRegisterVoiceCommand } from "@/hooks/useRegisterVoiceCommand";
 
 const Chat = () => {
   const [selectedChat, setSelectedChat] = useState(1);
@@ -30,6 +31,24 @@ const Chat = () => {
   ];
 
   const selectedConversation = conversations.find(c => c.id === selectedChat);
+
+  useRegisterVoiceCommand({
+    id: "send-message",
+    keywords: {
+      en: ["send message", "send"],
+      bn: ["মেসেজ পাঠাও", "পাঠাও"],
+    },
+    response: {
+      en: "Sending message",
+      bn: "মেসেজ পাঠানো হচ্ছে",
+    },
+    action: () => {
+      // Logic to send message if we had real state update for messages
+      if (message.trim()) {
+        setMessage(""); // Clear input to simulate sending
+      }
+    }
+  });
 
   return (
     <AppLayout>
