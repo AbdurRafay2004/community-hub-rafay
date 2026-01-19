@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Accessibility, 
@@ -8,9 +8,7 @@ import {
   ArrowRight,
   Mic,
   MicOff,
-  Square,
-  Radio,
-  WifiOff
+  Square
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,57 +17,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useVoiceAssistant, Language, CustomVoiceCommands } from "@/hooks/useVoiceAssistant";
-import { useAudioLevel } from "@/hooks/useAudioLevel";
-import { useWakeWord } from "@/hooks/useWakeWord";
+import { useVoiceAssistant, Language } from "@/hooks/useVoiceAssistant";
 import { useAudioFeedback } from "@/hooks/useAudioFeedback";
 import { VoiceCommandSettings } from "@/components/VoiceCommandSettings";
-import { WakeWordOverlay } from "@/components/WakeWordOverlay";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-
-// Audio level visualizer component
-function AudioLevelIndicator({ level, isActive }: { level: number; isActive: boolean }) {
-  const bars = 5;
-  
-  return (
-    <div className="flex items-end gap-1 h-6">
-      {Array.from({ length: bars }).map((_, i) => {
-        const threshold = (i + 1) * (100 / bars);
-        const isLit = isActive && level >= threshold - (100 / bars);
-        const height = 8 + (i * 4);
-        
-        return (
-          <div
-            key={i}
-            className={cn(
-              "w-1 rounded-full transition-all duration-75",
-              isLit 
-                ? level > 70 
-                  ? "bg-red-500" 
-                  : level > 40 
-                    ? "bg-yellow-500" 
-                    : "bg-green-500"
-                : "bg-muted-foreground/30"
-            )}
-            style={{ height: `${height}px` }}
-          />
-        );
-      })}
-    </div>
-  );
-}
 
 export function VoiceAssistant() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-  const [doublePressTimer, setDoublePressTimer] = useState<NodeJS.Timeout | null>(null);
-  const [pressCount, setPressCount] = useState(0);
-  const [wakeWordEnabled, setWakeWordEnabled] = useState(false);
-  const [showWakeWordOverlay, setShowWakeWordOverlay] = useState(false);
-  const [audioMeterEnabled, setAudioMeterEnabled] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
 
   const { playSound } = useAudioFeedback();
 
@@ -94,87 +49,6 @@ export function VoiceAssistant() {
     deactivate();
   });
 
-  const audioLevel = useAudioLevel();
-
-  // Handle wake word overlay complete
-  const handleWakeWordOverlayComplete = useCallback(() => {
-    setShowWakeWordOverlay(false);
-    setIsOpen(true);
-    activate();
-  }, [activate]);
-
-  // Wake word detection - "Hey Assistant"
-  // IMPORTANT: `enabled` here should NOT depend on `wakeWordEnabled`, otherwise we create a circular flow:
-  // - wakeWordEnabled starts false
-  // - startPassiveListening() refuses to start when enabled is false
-  // - wakeWordEnabled never becomes true
-  const wakeWord = useWakeWord({
-    wakeWords: ["hey assistant", "hi assistant", "ok assistant", "hello assistant", "hey সহায়ক"],
-    // Only disable when the dialog/overlay is shown (we explicitly start/stop via the button)
-    enabled: !isOpen && !showWakeWordOverlay,
-    onWake: useCallback(() => {
-      playSound("wakeWord");
-      // Show the overlay first
-      setShowWakeWordOverlay(true);
-    }, [playSound]),
-  });
-
-  // Determine if audio meter can safely run (no mic conflicts)
-  const canRunAudioMeter = audioMeterEnabled && !state.isListening && !wakeWordEnabled && !wakeWord.isListening;
-
-  // Start/stop audio meter based on safe conditions
-  useEffect(() => {
-    if (canRunAudioMeter && !audioLevel.isActive) {
-      audioLevel.startMonitoring();
-    } else if (!canRunAudioMeter && audioLevel.isActive) {
-      audioLevel.stopMonitoring();
-    }
-  }, [canRunAudioMeter, audioLevel]);
-
-  // NOTE: Avoid competing microphone streams.
-  // WebSpeech (SpeechRecognition) already uses the microphone.
-  // Starting a separate getUserMedia() stream for audio level monitoring can cause
-  // rapid connect/disconnect (especially on mobile/Brave), and can make recognition stop instantly.
-  // The audio meter toggle above only activates when wake word + listening are both off.
-
-
-  // Handle double-press of 'A' key to activate
-  const handleKeyPress = useCallback((e: KeyboardEvent) => {
-    if (e.key.toLowerCase() === 'a' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      setPressCount(prev => prev + 1);
-
-      if (doublePressTimer) {
-        clearTimeout(doublePressTimer);
-      }
-
-      const timer = setTimeout(() => {
-        setPressCount(0);
-      }, 500);
-
-      setDoublePressTimer(timer);
-    }
-  }, [doublePressTimer]);
-
-  // Check for double press
-  useEffect(() => {
-    if (pressCount >= 2) {
-      setPressCount(0);
-      playSound('notification');
-      setIsOpen(true);
-      activate();
-    }
-  }, [pressCount, activate, playSound]);
-
-  // Listen for keyboard shortcut
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [handleKeyPress]);
-
   // Handle dialog close
   const handleClose = () => {
     setIsOpen(false);
@@ -182,11 +56,21 @@ export function VoiceAssistant() {
   };
 
   // Handle floating button click
-  const handleActivate = () => {
+  const handleActivate = useCallback(() => {
     playSound('buttonPress');
     setIsOpen(true);
     activate();
-  };
+  }, [activate, playSound]);
+
+  // Global double-click listener
+  useEffect(() => {
+    const handleDoubleClick = () => {
+      handleActivate();
+    };
+
+    window.addEventListener('dblclick', handleDoubleClick);
+    return () => window.removeEventListener('dblclick', handleDoubleClick);
+  }, [handleActivate]);
 
   // Handle language selection
   const handleLanguageSelect = async (lang: Language) => {
@@ -213,42 +97,8 @@ export function VoiceAssistant() {
     }
   };
 
-  // Toggle wake word listening
-  const handleToggleWakeWord = async () => {
-    playSound('buttonPress');
-    if (wakeWordEnabled) {
-      wakeWord.stopPassiveListening();
-      setWakeWordEnabled(false);
-      toast({
-        title: "Wake Word Disabled",
-        description: "Say 'Hey Assistant' is no longer being monitored.",
-      });
-    } else {
-      const started = await wakeWord.startPassiveListening();
-      if (started) {
-        setWakeWordEnabled(true);
-        toast({
-          title: "Wake Word Enabled",
-          description: "Say 'Hey Assistant' anytime to activate voice commands.",
-        });
-      } else {
-        toast({
-          title: "Microphone Access Required",
-          description: "Please allow microphone access to use wake word detection.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
   return (
     <>
-      {/* Wake Word Overlay */}
-      <WakeWordOverlay 
-        isVisible={showWakeWordOverlay} 
-        onComplete={handleWakeWordOverlayComplete} 
-      />
-
       {/* Floating Accessibility Button */}
       <button
         onClick={handleActivate}
@@ -260,15 +110,12 @@ export function VoiceAssistant() {
           "flex items-center justify-center",
           "transition-all duration-300 hover:scale-110",
           "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-          wakeWordEnabled ? "ring-2 ring-green-500 ring-offset-2" : "animate-pulse-slow"
+          "animate-pulse-slow"
         )}
-        aria-label="Activate Voice Assistant - Press A twice to activate"
-        title={wakeWordEnabled ? "Voice Assistant (Listening for 'Hey Assistant')" : "Voice Assistant (Press A twice)"}
+        aria-label="Activate Voice Assistant"
+        title="Voice Assistant"
       >
         <Accessibility className="w-6 h-6" />
-        {wakeWordEnabled && (
-          <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping" />
-        )}
       </button>
 
       {/* Voice Assistant Dialog */}
@@ -285,122 +132,6 @@ export function VoiceAssistant() {
           </DialogHeader>
 
           <div className="space-y-6 py-4">
-            {/* Debug Toggle */}
-            <div className="flex justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDebug(!showDebug)}
-                className="text-xs text-muted-foreground"
-              >
-                {showDebug ? "Hide Debug" : "Show Debug"}
-              </Button>
-            </div>
-
-            {/* Debug Panel */}
-            {showDebug && (
-              <div className="p-3 bg-muted/50 rounded-lg border text-xs font-mono space-y-1">
-                <p className="font-semibold text-foreground mb-2">🔧 Voice Debug Panel</p>
-                <p>SpeechRecognition: <span className={wakeWord.isSupported ? "text-green-500" : "text-red-500"}>{wakeWord.isSupported ? "✓ Supported" : "✗ Not Supported"}</span></p>
-                <p>Wake Word Enabled (UI): <span className={wakeWordEnabled ? "text-green-500" : "text-yellow-500"}>{wakeWordEnabled ? "Yes" : "No"}</span></p>
-                <p>Wake Word Listening: <span className={wakeWord.isListening ? "text-green-500" : "text-yellow-500"}>{wakeWord.isListening ? "Yes" : "No"}</span></p>
-                <p>Wake Word Active: <span className={wakeWord.isActive ? "text-green-500" : "text-yellow-500"}>{wakeWord.isActive ? "Yes" : "No"}</span></p>
-                <p>Dialog Open: {isOpen ? "Yes" : "No"}</p>
-                <p>STT Listening: <span className={state.isListening ? "text-green-500" : "text-yellow-500"}>{state.isListening ? "Yes" : "No"}</span></p>
-                <p>TTS Speaking: <span className={state.isSpeaking ? "text-blue-500" : "text-muted-foreground"}>{state.isSpeaking ? "Yes" : "No"}</span></p>
-                <p>Last Heard (Wake): <span className="text-muted-foreground">{wakeWord.lastHeard || "(none)"}</span></p>
-                <p>Last Command: <span className="text-muted-foreground">{state.lastCommand || "(none)"}</span></p>
-                {state.error && <p className="text-red-500">Error: {state.error}</p>}
-              </div>
-            )}
-
-            {/* Wake Word Toggle */}
-            <div className={cn(
-              "flex items-center justify-between p-4 rounded-xl border transition-colors",
-              !wakeWord.isSupported
-                ? "bg-red-500/10 border-red-500/30"
-                : wakeWordEnabled && wakeWord.isListening
-                  ? "bg-green-500/10 border-green-500/30" 
-                  : wakeWordEnabled && !wakeWord.isListening
-                    ? "bg-yellow-500/10 border-yellow-500/30"
-                    : "bg-muted/50 border-border"
-            )}>
-              <div className="flex items-center gap-3">
-              {!wakeWord.isSupported ? (
-                <WifiOff className="w-5 h-5 text-red-500" />
-              ) : wakeWordEnabled && wakeWord.isListening ? (
-                <Radio className="w-5 h-5 text-green-500 animate-pulse" />
-              ) : wakeWordEnabled ? (
-                <Radio className="w-5 h-5 text-yellow-500" />
-              ) : (
-                <WifiOff className="w-5 h-5 text-muted-foreground" />
-              )}
-                <div>
-                  <p className="font-medium text-sm">
-                    {!wakeWord.isSupported 
-                      ? "Wake Word Not Supported"
-                      : wakeWordEnabled && wakeWord.isListening
-                        ? "Wake Word Listening..."
-                        : wakeWordEnabled && !wakeWord.isListening
-                          ? "Wake Word Starting..."
-                          : "Wake Word Inactive"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {!wakeWord.isSupported 
-                      ? "Your browser doesn't support SpeechRecognition"
-                      : "Say \"Hey Assistant\" to activate"}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant={wakeWordEnabled ? "destructive" : "default"}
-                size="sm"
-                onClick={handleToggleWakeWord}
-                disabled={!wakeWord.isSupported}
-              >
-                {wakeWordEnabled ? "Disable" : "Enable"}
-              </Button>
-            </div>
-
-            {/* Audio Meter Toggle - Only when not conflicting with mic */}
-            <div className={cn(
-              "flex items-center justify-between p-3 rounded-lg border transition-colors",
-              audioMeterEnabled 
-                ? canRunAudioMeter
-                  ? "bg-blue-500/10 border-blue-500/30" 
-                  : "bg-yellow-500/10 border-yellow-500/30"
-                : "bg-muted/30 border-border"
-            )}>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <AudioLevelIndicator 
-                    level={audioLevel.audioLevel} 
-                    isActive={audioLevel.isActive} 
-                  />
-                </div>
-                <div>
-                  <p className="font-medium text-xs">
-                    Audio Meter {audioMeterEnabled ? (canRunAudioMeter ? "(Active)" : "(Paused)") : "(Off)"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {audioMeterEnabled && !canRunAudioMeter 
-                      ? "Paused: mic in use" 
-                      : "Visual mic level indicator"}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant={audioMeterEnabled ? "outline" : "secondary"}
-                size="sm"
-                onClick={() => {
-                  playSound('buttonPress');
-                  setAudioMeterEnabled(!audioMeterEnabled);
-                }}
-                className="text-xs h-7"
-              >
-                {audioMeterEnabled ? "Off" : "On"}
-              </Button>
-            </div>
 
             {/* Speaking/Listening Indicators */}
             <div className="space-y-3">
@@ -428,7 +159,8 @@ export function VoiceAssistant() {
                 </div>
               )}
 
-              {state.language && (
+              {/* Show listening state */}
+              {(state.language || state.isListening) && (
                 <div className={cn(
                   "flex items-center justify-between p-4 rounded-xl border transition-colors",
                   state.isListening 
@@ -450,15 +182,9 @@ export function VoiceAssistant() {
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-medium">
                           {state.isListening 
-                            ? (state.language === "en" ? "Listening..." : "শুনছি...") 
-                            : (state.language === "en" ? "Microphone off" : "মাইক্রোফোন বন্ধ")}
+                            ? (state.language === "en" ? "Listening..." : "Listening / শুনছি...")
+                            : (state.language === "en" ? "Microphone off" : "Microphone off")}
                         </span>
-                        {state.isListening && audioMeterEnabled && canRunAudioMeter && (
-                          <AudioLevelIndicator 
-                            level={audioLevel.audioLevel} 
-                            isActive={audioLevel.isActive} 
-                          />
-                        )}
                       </div>
                       {state.lastCommand && (
                         <span className="text-xs text-muted-foreground">
@@ -616,9 +342,6 @@ export function VoiceAssistant() {
                 {state.language === "en" 
                   ? "Say 'Go to Dashboard' or tap any feature to navigate"
                   : "নেভিগেট করতে 'Go to Dashboard' বলুন বা যেকোনো ফিচারে ট্যাপ করুন"}
-              </p>
-              <p className="text-muted-foreground/70">
-                Keyboard: Press 'A' twice | Wake word: "Hey Assistant"
               </p>
             </div>
           </div>

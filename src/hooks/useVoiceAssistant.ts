@@ -209,6 +209,7 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
   });
 
   const [customCommands, setCustomCommands] = useState<CustomVoiceCommands>({});
+  const [commandTimestamp, setCommandTimestamp] = useState<number>(0);
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const abortRef = useRef(false);
@@ -302,20 +303,21 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
       return;
     }
 
+    // INTERRUPTION: Stop speaking if we manually start listening
+    stopSpeaking();
+
     // Mark user's intent first (so onend can auto-restart)
     desiredListeningRef.current = true;
 
     // Don't start if already starting/listening
     if (isStartingRef.current || isListeningRef.current) return;
 
-    // Don't start while speaking
-    if (speakingRef.current) return;
-
     const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognitionClass();
 
     recognition.continuous = true;
     recognition.interimResults = false;
+    // Use detected language or default to English/System for selection phase
     recognition.lang = state.language === "bn" ? "bn-BD" : "en-US";
 
     recognition.onstart = () => {
@@ -331,40 +333,7 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
 
       console.log("Voice command received:", transcript);
       setState((prev) => ({ ...prev, lastCommand: transcript }));
-
-      const lowerTranscript = transcript.toLowerCase();
-
-      // "Stop / cancel" voice commands
-      if (
-        lowerTranscript.includes("stop") ||
-        lowerTranscript.includes("cancel") ||
-        lowerTranscript.includes("shut up") ||
-        lowerTranscript.includes("থামো") ||
-        lowerTranscript.includes("থামুন") ||
-        lowerTranscript.includes("বন্ধ")
-      ) {
-        stopSpeaking();
-        stopListening();
-        return;
-      }
-
-      // Check for navigation commands
-      const matchedFeature = findFeatureByVoiceCommand(transcript);
-      if (matchedFeature) {
-        stopListening();
-        navigateToFeature(matchedFeature.path);
-        return;
-      }
-
-      // Check for "read all" command
-      if (
-        lowerTranscript.includes("read all") ||
-        lowerTranscript.includes("read features") ||
-        lowerTranscript.includes("সব পড়ুন")
-      ) {
-        stopListening();
-        readAllFeatures();
-      }
+      setCommandTimestamp(Date.now());
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -394,7 +363,7 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
       const shouldAutoRestart =
         desiredListeningRef.current &&
         activeRef.current &&
-        stepRef.current === "navigation" &&
+        (stepRef.current === "navigation" || stepRef.current === "language_selection") &&
         !abortRef.current;
 
       if (!shouldAutoRestart) {
@@ -425,8 +394,8 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
       window.setTimeout(() => {
         if (!desiredListeningRef.current) return;
         if (!activeRef.current) return;
-        if (stepRef.current !== "navigation") return;
-        if (speakingRef.current) return;
+        if (stepRef.current !== "navigation" && stepRef.current !== "language_selection") return;
+        // if (speakingRef.current) return; // Removed to allow listening loop even if speaking (if overlapping)
         if (isStartingRef.current || isListeningRef.current) return;
 
         // Some browsers require user gesture for recognition.start(). If this throws,
@@ -455,7 +424,7 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
       desiredListeningRef.current = false;
       setState((prev) => ({ ...prev, isListening: false, error: "not-allowed" }));
     }
-  }, [isSTTSupported, state.language, findFeatureByVoiceCommand, stopListening, stopSpeaking]);
+  }, [isSTTSupported, state.language, stopSpeaking]);
 
   // Speak text in the specified language
   const speak = useCallback(async (text: string, lang: Language = "en"): Promise<void> => {
@@ -498,8 +467,9 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
       utterance.onend = () => {
         setState(prev => ({ ...prev, isSpeaking: false }));
         resolve();
-        // Resume listening after speaking
-        if (state.isActive && state.currentStep === "navigation") {
+        // Resume listening after speaking if in navigation or language selection
+        // Use refs to check current state as the closure might be stale
+        if (activeRef.current && (stepRef.current === "navigation" || stepRef.current === "language_selection")) {
           setTimeout(() => startListening(), 300);
         }
       };
@@ -574,24 +544,29 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
     }
   }, [state.language, speak]);
 
+  // Select language and start listening
+  const selectLanguage = useCallback(async (lang: Language) => {
+    setState(prev => ({ ...prev, language: lang, currentStep: "navigation" }));
+
+    const confirmMessage = lang === "en"
+      ? "You have selected English. You can now say commands like Go to Dashboard or Open SOS to navigate."
+      : "আপনি বাংলা নির্বাচন করেছেন। আপনি এখন Go to Dashboard বা Open SOS এর মত কমান্ড বলতে পারেন নেভিগেট করতে।";
+
+    await speak(confirmMessage, lang);
+  }, [speak]);
+
   // Bilingual greeting and language selection
   const greetAndAskLanguage = useCallback(async () => {
     setState(prev => ({ ...prev, currentStep: "greeting" }));
     
-    // Greeting in both languages
-    await speak("Welcome to Community Compass. আপনাকে কমিউনিটি কম্পাসে স্বাগতম।", "en");
+    // Greeting
+    await speak("Welcome. Please say English or Bangla.", "en");
     
     if (abortRef.current) return;
     
     setState(prev => ({ ...prev, currentStep: "language_selection" }));
-    
-    // Ask for language preference in both languages
-    await speak(
-      "Please choose your language. Say English or Bangla. " +
-      "অনুগ্রহ করে আপনার ভাষা বেছে নিন। ইংরেজি বা বাংলা বলুন।",
-      "en"
-    );
-  }, [speak]);
+    startListening();
+  }, [speak, startListening]);
 
   // Activate the voice assistant
   const activate = useCallback(() => {
@@ -622,17 +597,6 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
     });
   }, [stopSpeaking, stopListening]);
 
-  // Select language and start listening
-  const selectLanguage = useCallback(async (lang: Language) => {
-    setState(prev => ({ ...prev, language: lang, currentStep: "navigation" }));
-
-    const confirmMessage = lang === "en"
-      ? "You have selected English. You can now say commands like Go to Dashboard or Open SOS to navigate. I will also tell you about all the features."
-      : "আপনি বাংলা নির্বাচন করেছেন। আপনি এখন Go to Dashboard বা Open SOS এর মত কমান্ড বলতে পারেন নেভিগেট করতে। আমি আপনাকে সব ফিচার সম্পর্কেও বলব।";
-
-    await speak(confirmMessage, lang);
-  }, [speak]);
-
   // Read a specific feature
   const readFeature = useCallback(async (index: number) => {
     const lang = state.language || "en";
@@ -646,6 +610,58 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
 
     await speak(featureText, lang);
   }, [state.language, speak]);
+
+  // Handle voice commands (Language selection, Navigation, Stop, Read All)
+  useEffect(() => {
+    if (!state.lastCommand || commandTimestamp === 0) return;
+
+    const lowerTranscript = state.lastCommand.toLowerCase();
+
+    // "Stop / cancel" voice commands
+    if (
+      lowerTranscript.includes("stop") ||
+      lowerTranscript.includes("cancel") ||
+      lowerTranscript.includes("shut up") ||
+      lowerTranscript.includes("থামো") ||
+      lowerTranscript.includes("থামুন") ||
+      lowerTranscript.includes("বন্ধ")
+    ) {
+      stopSpeaking();
+      stopListening();
+      return;
+    }
+
+    // Language Selection
+    if (state.currentStep === "language_selection") {
+      if (lowerTranscript.includes("english")) {
+        selectLanguage("en");
+      } else if (lowerTranscript.includes("bangla") || lowerTranscript.includes("বাংলা")) {
+        selectLanguage("bn");
+      }
+      return;
+    }
+
+    // Navigation and Features (only if language is selected)
+    if (state.language) {
+      // Check for navigation commands
+      const matchedFeature = findFeatureByVoiceCommand(state.lastCommand);
+      if (matchedFeature) {
+        stopListening();
+        navigateToFeature(matchedFeature.path);
+        return;
+      }
+
+      // Check for "read all" command
+      if (
+        lowerTranscript.includes("read all") ||
+        lowerTranscript.includes("read features") ||
+        lowerTranscript.includes("সব পড়ুন")
+      ) {
+        stopListening();
+        readAllFeatures();
+      }
+    }
+  }, [commandTimestamp, state.lastCommand, state.currentStep, state.language, selectLanguage, stopListening, stopSpeaking, navigateToFeature, readAllFeatures, findFeatureByVoiceCommand]);
 
   // Load voices when available
   useEffect(() => {
