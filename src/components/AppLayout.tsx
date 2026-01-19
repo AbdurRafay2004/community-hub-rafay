@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useAuthActions } from "@convex-dev/auth/react";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -35,6 +38,8 @@ const navItems = [
 
 const AppLayout = ({ children }: AppLayoutProps) => {
   const location = useLocation();
+  const user = useQuery(api.users.viewer);
+  const { signOut } = useAuthActions();
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -89,11 +94,11 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-gradient-hero rounded-full flex items-center justify-center text-primary-foreground font-semibold">
-              JD
+              {user?.name?.charAt(0) ?? "U"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">John Doe</p>
-              <p className="text-xs text-muted-foreground truncate">john@example.com</p>
+              <p className="text-sm font-medium text-foreground truncate">{user?.name ?? "User"}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email ?? ""}</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -102,11 +107,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                 <Settings className="w-4 h-4" />
               </button>
             </Link>
-            <Link to="/" className="flex-1">
-              <button className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors">
-                <LogOut className="w-4 h-4" />
-              </button>
-            </Link>
+            <button
+              onClick={() => signOut()}
+              className="flex-1 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>

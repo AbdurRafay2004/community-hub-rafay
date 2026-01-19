@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Compass, Mail, Lock, User, Phone, ArrowRight, Eye, EyeOff, CheckCircle } from "lucide-react";
+import { useAuthActions } from "@convex-dev/auth/react";
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -14,6 +15,32 @@ const Register = () => {
     password: "",
     confirmPassword: ""
   });
+  const [error, setError] = useState<string | null>(null);
+  const { signIn } = useAuthActions();
+  const navigate = useNavigate();
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    try {
+      await signIn("password", {
+        email: formData.email,
+        password: formData.password,
+        flow: "signUp",
+        name: formData.name,
+        phone: formData.phone
+      });
+      navigate("/dashboard");
+    } catch (err) {
+      console.error(err);
+      setError("Could not create account");
+    }
+  };
 
   const passwordRequirements = [
     { text: "At least 8 characters", met: formData.password.length >= 8 },
@@ -58,7 +85,7 @@ const Register = () => {
           <h1 className="text-3xl font-bold text-foreground mb-2">Create account</h1>
           <p className="text-muted-foreground mb-8">Fill in your details to get started</p>
 
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleRegister}>
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <div className="relative">
@@ -152,6 +179,8 @@ const Register = () => {
               </div>
             </div>
 
+            {error && <p className="text-destructive text-sm">{error}</p>}
+
             <label className="flex items-start gap-2 cursor-pointer">
               <input type="checkbox" className="mt-1 rounded border-border text-primary" />
               <span className="text-sm text-muted-foreground">
@@ -160,12 +189,10 @@ const Register = () => {
               </span>
             </label>
 
-            <Link to="/dashboard">
-              <Button variant="hero" size="lg" className="w-full mt-2">
-                Create Account
-                <ArrowRight className="w-5 h-5" />
-              </Button>
-            </Link>
+            <Button variant="hero" size="lg" className="w-full mt-2" type="submit">
+              Create Account
+              <ArrowRight className="w-5 h-5" />
+            </Button>
           </form>
 
           <p className="mt-8 text-center text-muted-foreground">
