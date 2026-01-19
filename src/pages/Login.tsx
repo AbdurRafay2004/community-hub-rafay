@@ -1,14 +1,30 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Compass, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { useAuthActions } from "@convex-dev/auth/react";
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const { signIn } = useAuthActions();
+  const navigate = useNavigate();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      await signIn("password", { email, password, flow: "signIn" });
+      navigate("/dashboard");
+    } catch (err) {
+      console.error(err);
+      setError("Invalid email or password");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -25,7 +41,7 @@ const Login = () => {
           <h1 className="text-3xl font-bold text-foreground mb-2">Welcome back</h1>
           <p className="text-muted-foreground mb-8">Sign in to your account to continue</p>
 
-          <form className="space-y-5">
+          <form className="space-y-5" onSubmit={handleLogin}>
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">Email</Label>
               <div className="relative">
@@ -63,6 +79,8 @@ const Login = () => {
               </div>
             </div>
 
+            {error && <p className="text-destructive text-sm">{error}</p>}
+
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" className="rounded border-border text-primary focus:ring-primary" />
@@ -73,12 +91,10 @@ const Login = () => {
               </Link>
             </div>
 
-            <Link to="/dashboard">
-              <Button variant="hero" size="lg" className="w-full">
-                Sign In
-                <ArrowRight className="w-5 h-5" />
-              </Button>
-            </Link>
+            <Button variant="hero" size="lg" className="w-full" type="submit">
+              Sign In
+              <ArrowRight className="w-5 h-5" />
+            </Button>
           </form>
 
           <p className="mt-8 text-center text-muted-foreground">
