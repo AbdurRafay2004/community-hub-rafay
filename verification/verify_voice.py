@@ -14,6 +14,11 @@ def test_voice_assistant(page: Page):
     print("Verifying dialog...")
     expect(page.get_by_text("Voice Assistant").first).to_be_visible()
 
+    print("Verifying language buttons (Empty Panel Check)...")
+    # Using regex or partial text if exact match fails due to icons/newlines
+    expect(page.get_by_text("English")).to_be_visible()
+    expect(page.get_by_text("বাংলা")).to_be_visible()
+
     page.wait_for_timeout(1000)
     print("Taking screenshot 1...")
     page.screenshot(path="verification/voice_assistant_dialog.png")
@@ -27,6 +32,9 @@ def test_voice_assistant(page: Page):
 
     print("Verifying dialog again...")
     expect(page.get_by_text("Voice Assistant").first).to_be_visible()
+
+    print("Verifying language buttons again...")
+    expect(page.get_by_text("English")).to_be_visible()
 
     page.wait_for_timeout(1000)
     print("Taking screenshot 2...")

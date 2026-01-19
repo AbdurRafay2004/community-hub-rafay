@@ -244,7 +244,7 @@ export function VoiceAssistant() {
             )}
 
             {/* Language Selection */}
-            {state.currentStep === "language_selection" && !state.language && (
+            {!state.language && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-center">
                   Choose Language / ভাষা বেছে নিন
@@ -339,9 +339,9 @@ export function VoiceAssistant() {
             {/* Instructions */}
             <div className="text-xs text-muted-foreground text-center space-y-1 pt-4 border-t border-border">
               <p>
-                {state.language === "en" 
-                  ? "Say 'Go to Dashboard' or tap any feature to navigate"
-                  : "নেভিগেট করতে 'Go to Dashboard' বলুন বা যেকোনো ফিচারে ট্যাপ করুন"}
+                {state.language === "bn"
+                  ? "নেভিগেট করতে 'Go to Dashboard' বলুন বা যেকোনো ফিচারে ট্যাপ করুন"
+                  : "Say 'Go to Dashboard' or tap any feature to navigate"}
               </p>
             </div>
           </div>

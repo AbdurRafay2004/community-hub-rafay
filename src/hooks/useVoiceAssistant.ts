@@ -309,6 +309,14 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
     // Mark user's intent first (so onend can auto-restart)
     desiredListeningRef.current = true;
 
+    // Ensure we are in a valid state for listening (transition from greeting/idle)
+    if (stepRef.current === "idle" || stepRef.current === "greeting") {
+      setState(prev => ({
+        ...prev,
+        currentStep: prev.language ? "navigation" : "language_selection"
+      }));
+    }
+
     // Don't start if already starting/listening
     if (isStartingRef.current || isListeningRef.current) return;
 
@@ -363,8 +371,7 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
       const shouldAutoRestart =
         desiredListeningRef.current &&
         activeRef.current &&
-        (stepRef.current === "navigation" || stepRef.current === "language_selection") &&
-        !abortRef.current;
+        (stepRef.current === "navigation" || stepRef.current === "language_selection");
 
       if (!shouldAutoRestart) {
         setState((prev) => ({ ...prev, isListening: false }));
@@ -485,7 +492,7 @@ export function useVoiceAssistant(onNavigate?: (path: string) => void): UseVoice
 
       window.speechSynthesis.speak(utterance);
     });
-  }, [isTTSSupported, state.isActive, state.currentStep, stopListening, startListening]);
+  }, [isTTSSupported, stopListening, startListening]);
 
   // Navigate to a feature - defined before readAllFeatures
   const navigateToFeature = useCallback(async (path: string) => {
